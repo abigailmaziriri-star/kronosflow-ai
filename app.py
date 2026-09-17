@@ -55,59 +55,44 @@ for code, name in ALL_MARKETS.items():
 
 APP_ID = "1089" 
 API_TOKEN = "pat_2835a32815fff743180964079b2d7d66c61fbdb11dfabef674fadeb004f3f523"
-
 async def live_deriv_quantum_engine():
     global SYSTEM_TELEMETRY
     url = f"wss://://derivws.com{APP_ID}"
-    
     while True:
         try:
             SYSTEM_TELEMETRY["status"] = "📡 SCANNING ALL..."
             async with websockets.connect(url) as ws:
                 await ws.send(json.dumps({"authorize": API_TOKEN}))
                 auth_resp = json.loads(await ws.recv())
-                
                 if "error" in auth_resp:
                     SYSTEM_TELEMETRY["status"] = "🔴 AUTH FAILURE"
                     SYSTEM_TELEMETRY["last_signal"] = f"Token Denied: {auth_resp['error']['message']}"
                     return
-                
                 SYSTEM_TELEMETRY["balance"] = f"{float(auth_resp['authorize']['balance']):,.2f}"
                 SYSTEM_TELEMETRY["status"] = "🟢 MATRIX ACTIVE"
-                
                 for market_code in ALL_MARKETS.keys():
                     await ws.send(json.dumps({"ticks": market_code, "subscribe": 1}))
-                
                 async for raw_message in ws:
                     message = json.loads(raw_message)
                     if "tick" not in message: continue
-                    
                     tick_data = message["tick"]
                     code = tick_data["symbol"]
                     quote = float(tick_data["quote"])
-                    
                     if code not in SYSTEM_TELEMETRY["market_data"]: continue
                     m_state = SYSTEM_TELEMETRY["market_data"][code]
-                    
                     m_state["history"].append(quote)
-                    if len(m_state["history"]) > 200:
-                        m_state["history"].pop(0)
-                        
+                    if len(m_state["history"]) > 200: m_state["history"].pop(0)
                     m_state["ticks_analyzed"] = len(m_state["history"])
-                    
                     digits_list = [int(str(p).split('.')[-1][-1]) for p in m_state["history"] if '.' in str(p)]
                     if digits_list:
                         freq_map = {d: digits_list.count(d) for d in range(6)}
                         m_state["digits"] = [round((freq_map[d] / len(digits_list)) * 100) for d in range(6)]
-                    
                     if len(m_state["history"]) >= 10:
                         diffs = [m_state["history"][i] - m_state["history"][i-1] for i in range(1, len(m_state["history"]))]
                         velocity = sum(diffs) / len(diffs)
                         variance = max(abs(d) for d in diffs)
-                        
                         risk_score = min(int(variance * 10000), 100)
                         m_state["risk_index"] = risk_score
-                        
                         if risk_score < 40 and abs(velocity) < 0.005:
                             m_state["risk_label"] = f"{risk_score}% - Safe Matrix"
                             m_state["last_signal"] = f"🟢 ACCUMULATOR ENTRY SIGNAL: Low volatility on {ALL_MARKETS[code]}."
@@ -120,7 +105,6 @@ async def live_deriv_quantum_engine():
                             m_state["risk_label"] = f"{risk_score}% - CRITICAL COLLAPSE"
                             m_state["last_signal"] = f"🔴 ALERT: Knockout crash danger on {ALL_MARKETS[code]}! Sell contract."
                             m_state["signal_color"] = "#ff4a5a"
-                    
                     if code == SYSTEM_TELEMETRY["active_market"]:
                         SYSTEM_TELEMETRY["risk_index"] = m_state["risk_index"]
                         SYSTEM_TELEMETRY["risk_label"] = m_state["risk_label"]
@@ -128,8 +112,7 @@ async def live_deriv_quantum_engine():
                         SYSTEM_TELEMETRY["signal_color"] = m_state["signal_color"]
                         SYSTEM_TELEMETRY["digits"] = m_state["digits"]
                         SYSTEM_TELEMETRY["ticks_analyzed"] = m_state["ticks_analyzed"]
-                            
-        except Exception as e:
+        except Exception:
             SYSTEM_TELEMETRY["status"] = "🔴 RECONNECTING..."
             await asyncio.sleep(5)
 
@@ -169,7 +152,6 @@ HTML_LAYOUT = """
             await fetch('/api/switch_market/' + marketCode);
             updateTelemetry();
         }
-
         async function updateTelemetry() {
             try {
                 const response = await fetch('/api/telemetry');
@@ -178,11 +160,9 @@ HTML_LAYOUT = """
                 document.getElementById('balance-display').innerText = '$' + data.balance + ' USD';
                 document.getElementById('risk-value').innerText = data.risk_label;
                 document.getElementById('signal-text').innerText = data.last_signal;
-                
                 const selectedSelect = document.getElementById('market-selector');
                 const selectedText = selectedSelect.options[selectedSelect.selectedIndex].text;
                 document.getElementById('depth-counter').innerText = 'Asset: ' + selectedText + ' | Matrix Depth: ' + data.ticks_analyzed + ' Ticks';
-                
                 document.getElementById('gauge-fill').style.width = data.risk_index + '%';
                 for (let i = 0; i <= 5; i++) {
                     document.getElementById('digit-val-' + i).innerText = data.digits[i] + '%';
@@ -202,7 +182,6 @@ HTML_LAYOUT = """
             <div class="subtitle">⚡ MULTI-MATRIX SIMULTANEOUS SCANNING // PRODUCTION UNIT</div>
             <div class="status-badge" id="status-indicator">CONNECTING...</div>
         </div>
-        
         <div class="card">
             <h2>🌍 CHOOSE MONITORING STREAM VIEW</h2>
             <div class="input-group">
@@ -223,7 +202,6 @@ HTML_LAYOUT = """
                 </select>
             </div>
         </div>
-
         <div class="card">
             <h2>🔐 DERIV CORE SYNC LINK</h2>
             <div class="input-group">
@@ -264,12 +242,10 @@ HTML_LAYOUT = """
 """
 
 @app.route('/')
-def dashboard():
-    return HTML_LAYOUT
+def dashboard(): return HTML_LAYOUT
 
 @app.route('/api/telemetry')
-def get_telemetry():
-    return jsonify(SYSTEM_TELEMETRY)
+def get_telemetry(): return jsonify(SYSTEM_TELEMETRY)
 
 @app.route('/api/switch_market/<market_code>')
 def switch_market(market_code):
