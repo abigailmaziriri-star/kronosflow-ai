@@ -54,8 +54,7 @@ for code, name in ALL_MARKETS.items():
     }
 
 APP_ID = "1089" 
-API_TOKEN = "pat_2835a32815fff743180964079b2d7d66c61fbdb11dfabef674fadeb004f3f523"
-
+API_TOKEN = "pat_9303896ca66e1e132ebf393d548d4e858193eee9e9b783b700f317ac68a8e65a"
 async def live_deriv_quantum_engine():
     global SYSTEM_TELEMETRY
     url = f"wss://://derivws.com{APP_ID}"
@@ -120,7 +119,6 @@ async def live_deriv_quantum_engine():
 def start_background_loop(loop):
     asyncio.set_event_loop(loop)
     loop.run_until_complete(live_deriv_quantum_engine())
-
 HTML_LAYOUT = """
 <!DOCTYPE html>
 <html lang="en">
@@ -184,7 +182,6 @@ HTML_LAYOUT = """
             <div class="subtitle">⚡ MULTI-MATRIX SIMULTANEOUS SCANNING // PRODUCTION UNIT</div>
             <div class="status-badge" id="status-indicator">CONNECTING...</div>
         </div>
-        <!-- MARKET SELECTOR DROP DOWN -->
         <div class="card">
             <h2>🌍 CHOOSE MONITORING STREAM VIEW</h2>
             <div class="input-group">
@@ -205,7 +202,6 @@ HTML_LAYOUT = """
                 </select>
             </div>
         </div>
-
         <div class="card">
             <h2>🔐 DERIV CORE SYNC LINK</h2>
             <div class="input-group">
