@@ -54,7 +54,7 @@ for code, name in ALL_MARKETS.items():
     }
 
 APP_ID = "1089" 
-API_TOKEN = "pat_2835a32815fff743180964079b2d7d66c61fbdb11dfabef674fadeb004f3f523"
+API_TOKEN = ""
 async def live_deriv_quantum_engine():
     global SYSTEM_TELEMETRY
     url = f"wss://://derivws.com{APP_ID}"
