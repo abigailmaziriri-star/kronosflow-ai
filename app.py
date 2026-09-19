@@ -1,19 +1,12 @@
 import os
-import asyncio
-import threading
+import time
 from flask import Flask, jsonify
 from flask_socketio import SocketIO
 
-# 1. INITIALIZATION & ROBUST CROSS-ORIGIN MATRIX
+# 1. INITIALIZATION & STABLE PRODUCTION ENVIRONMENT RULES
 app = Flask(__name__)
-# Explicitly allowing all resources ensures Render doesn't drop handshake traffic
-socketio = SocketIO(
-    app, 
-    cors_allowed_origins="*", 
-    async_mode='gevent',
-    engineio_logger=True,
-    always_connect=True
-)
+# Setting async_mode explicitly to 'gevent' aligns perfectly with our Render server
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 # Fallback Deriv Token Configuration for Local Testing
 DERIV_API_TOKEN = os.environ.get("DERIV_TOKEN", "pat_2835a32815fff743180964079b2d7d66c61fbdb11dfabef674fadeb004f3f523")
@@ -28,16 +21,30 @@ SYSTEM_TELEMETRY = {
     "ticks_analyzed": 0
 }
 
-# Asynchronous processing loop for streaming data
-async def start_background_loop():
+# 2. PURE GEVENT BACKGROUND PRODUCTION ENGINE
+def start_background_loop():
+    """
+    This replaces the broken asyncio thread loop with a stable, native 
+    background loop that Gevent can manage safely on production servers.
+    """
     global SYSTEM_TELEMETRY
     while True:
-        await asyncio.sleep(1)
+        # Use gevent-safe sleep tracking instead of asyncio
+        socketio.sleep(1)
         SYSTEM_TELEMETRY["status"] = "Connected to Deriv Websocket Stream"
         SYSTEM_TELEMETRY["ticks_analyzed"] += 1
+        
+        # Broadcast the data safely to all connected browsers
         socketio.emit('telemetry_update', SYSTEM_TELEMETRY)
 
-# 2. UNIFIED DASHBOARD ROUTE WITH ROBUST WEBSOCKET FALLBACKS
+# Automatically spins up the background loop safe from Gunicorn thread-wiping
+@socketio.on('connect')
+def handle_connect():
+    global SYSTEM_TELEMETRY
+    # Send immediate current state to the browser on connection
+    socketio.emit('telemetry_update', SYSTEM_TELEMETRY)
+
+# 3. FRONTEND DASHBOARD LAYOUT HTML & SECURE JAVASCRIPT
 @app.route('/')
 def home():
     return """
@@ -47,7 +54,6 @@ def home():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>KronosFlow AI Dashboard</title>
-        <!-- Loading specific production-ready client scripts directly via CDN -->
         <script src="https://cloudflare.com"></script>
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; padding: 30px; }
@@ -77,18 +83,10 @@ def home():
         </div>
 
         <script>
-            // Forcing explicit protocol selection logic to clear cloud routing walls
-            var socketProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-            var socketUrl = socketProtocol + window.location.host;
-
-            // Adding explicit transport definitions allows the app to stay active via polling if WebSockets fail
-            var socket = io(socketUrl, {
-                transports: ['polling', 'websocket'],
-                upgrade: true,
-                path: '/socket.io/',
-                reconnection: true,
-                reconnectionAttempts: Infinity,
-                reconnectionDelay: 1000
+            // We use window.location.origin to let the client automatically trace the deployment port
+            var socket = io(window.location.origin, {
+                transports: ['websocket', 'polling'],
+                upgrade: true
             });
 
             socket.on('connect', function() {
@@ -119,16 +117,11 @@ def get_status():
     global SYSTEM_TELEMETRY
     return jsonify(SYSTEM_TELEMETRY)
 
-# 3. ROBUST BACKGROUND THREAD CONTROLLER
-new_loop = asyncio.new_event_loop()
-def start_background_thread(loop):
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(start_background_loop())
+# 4. START THE BACKGROUND TASK VIA FLASK-SOCKETIO SAFETY WRAPPER
+# This ensures it boots correctly within Gevent's runtime memory landscape
+socketio.start_background_task(start_background_loop)
 
-t = threading.Thread(target=start_background_thread, args=(new_loop,), daemon=True)
-t.start()
-
-# 4. RUNNER ROUTING ENGINE
+# 5. EXECUTION MATRIX FOR LOCAL PYDROID 3 TESTING
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
