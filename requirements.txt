@@ -1,4 +1,6 @@
 flask
 websockets
+gunicorn
 gevent
 gevent-websocket
+
