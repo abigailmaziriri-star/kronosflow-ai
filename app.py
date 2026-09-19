@@ -4,16 +4,14 @@ import threading
 from flask import Flask, jsonify
 from flask_socketio import SocketIO
 
-# 1. INITIALIZATION & SECURITY ORIENTATION
+# 1. INITIALIZATION & SECURITY SETUP
 app = Flask(__name__)
-# cors_allowed_origins="*" ensures Render routes traffic into the script securely
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Fallback Deriv Token Configuration for Local Testing
-# Render will automatically use its own Environment Variables first
 DERIV_API_TOKEN = os.environ.get("DERIV_TOKEN", "pat_2835a32815fff743180964079b2d7d66c61fbdb11dfabef674fadeb004f3f523")
 
-# Automated bot trading engine tracking state
+# Live trading engine metrics tracking state
 SYSTEM_TELEMETRY = {
     "status": "Initializing Engine...",
     "risk_label": "Safe (Monitoring)",
@@ -23,17 +21,16 @@ SYSTEM_TELEMETRY = {
     "ticks_analyzed": 0
 }
 
-# The asynchronous processing structure for digit predictions & live ticks
+# Asynchronous processing loop for streaming data
 async def start_background_loop():
     global SYSTEM_TELEMETRY
     while True:
-        # Simulates reading the continuous 20-second interval confidence scanner from Deriv stream
         await asyncio.sleep(1)
         SYSTEM_TELEMETRY["status"] = "Connected to Deriv Websocket Stream"
         SYSTEM_TELEMETRY["ticks_analyzed"] += 1
-        
-        # Emit live ticker events to the frontend dashboard
         socketio.emit('telemetry_update', SYSTEM_TELEMETRY)
+
+# 2. FRONTEND DASHBOARD LAYOUT HTML & SECURE JAVASCRIPT
 @app.route('/')
 def home():
     return """
@@ -72,7 +69,6 @@ def home():
         </div>
 
         <script>
-            // Adaptive client handshake protocol controller (Fixes the Render Reconnecting loop error)
             var socket = io(window.location.origin, {
                 transports: ['websocket', 'polling']
             });
@@ -104,21 +100,17 @@ def home():
 def get_status():
     global SYSTEM_TELEMETRY
     return jsonify(SYSTEM_TELEMETRY)
-# 3. BACKGROUND WORKER CONFIGURATION
-# Creates and instantiates the loop outside the main scope so Render/Gunicorn triggers it instantly
+
+# 3. BACKGROUND WORKER ENGINE CONFIGURATION
 new_loop = asyncio.new_event_loop()
 def start_background_thread(loop):
     asyncio.set_event_loop(loop)
     loop.run_until_complete(start_background_loop())
 
-# Launch persistent daemon worker
 t = threading.Thread(target=start_background_thread, args=(new_loop,), daemon=True)
 t.start()
 
-# 4. RUNNER CONFIGURATION CONTROL MATRIX
+# 4. EXECUTION LAYER CONFIGURATION
 if __name__ == '__main__':
-    # Dynamically binds Render assigned deployment port, or defaults to port 5000 inside Pydroid 3
     port = int(os.environ.get("PORT", 5000))
-    
-    # allow_unsafe_werkzeug=True is isolated here so it only executes when testing locally on your phone
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
