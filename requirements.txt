@@ -3,4 +3,6 @@ websockets
 gunicorn
 gevent
 gevent-websocket
+packaging
+
 
