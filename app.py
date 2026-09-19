@@ -4,15 +4,15 @@ import threading
 from flask import Flask, jsonify
 from flask_socketio import SocketIO
 
-# 1. INITIALIZATION & ADVANCED PROXY SETUP
+# 1. INITIALIZATION & ROBUST CROSS-ORIGIN MATRIX
 app = Flask(__name__)
-# Added ping timeout adjustments to keep the cloud connection alive persistently
+# Explicitly allowing all resources ensures Render doesn't drop handshake traffic
 socketio = SocketIO(
     app, 
     cors_allowed_origins="*", 
     async_mode='gevent',
-    ping_timeout=60, 
-    ping_interval=25
+    engineio_logger=True,
+    always_connect=True
 )
 
 # Fallback Deriv Token Configuration for Local Testing
@@ -37,7 +37,7 @@ async def start_background_loop():
         SYSTEM_TELEMETRY["ticks_analyzed"] += 1
         socketio.emit('telemetry_update', SYSTEM_TELEMETRY)
 
-# 2. FRONTEND DASHBOARD LAYOUT HTML & SECURE JAVASCRIPT
+# 2. UNIFIED DASHBOARD ROUTE WITH ROBUST WEBSOCKET FALLBACKS
 @app.route('/')
 def home():
     return """
@@ -47,7 +47,8 @@ def home():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>KronosFlow AI Dashboard</title>
-        <script src="https://socket.io"></script>
+        <!-- Loading specific production-ready client scripts directly via CDN -->
+        <script src="https://cloudflare.com"></script>
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; padding: 30px; }
             .container { max-width: 600px; margin: 0 auto; background: #1e293b; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5); }
@@ -76,11 +77,18 @@ def home():
         </div>
 
         <script>
-            // Enhanced connection manager that handles polling fallbacks automatically on mobile browsers
-            var socket = io(window.location.origin, {
+            // Forcing explicit protocol selection logic to clear cloud routing walls
+            var socketProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+            var socketUrl = socketProtocol + window.location.host;
+
+            // Adding explicit transport definitions allows the app to stay active via polling if WebSockets fail
+            var socket = io(socketUrl, {
                 transports: ['polling', 'websocket'],
                 upgrade: true,
-                rememberUpgrade: true
+                path: '/socket.io/',
+                reconnection: true,
+                reconnectionAttempts: Infinity,
+                reconnectionDelay: 1000
             });
 
             socket.on('connect', function() {
@@ -111,7 +119,7 @@ def get_status():
     global SYSTEM_TELEMETRY
     return jsonify(SYSTEM_TELEMETRY)
 
-# 3. BACKGROUND WORKER ENGINE CONFIGURATION
+# 3. ROBUST BACKGROUND THREAD CONTROLLER
 new_loop = asyncio.new_event_loop()
 def start_background_thread(loop):
     asyncio.set_event_loop(loop)
@@ -120,7 +128,7 @@ def start_background_thread(loop):
 t = threading.Thread(target=start_background_thread, args=(new_loop,), daemon=True)
 t.start()
 
-# 4. EXECUTION LAYER CONFIGURATION
+# 4. RUNNER ROUTING ENGINE
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
