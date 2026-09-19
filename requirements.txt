@@ -1,2 +1,4 @@
 flask
 websockets
+gevent
+gevent-websocket
