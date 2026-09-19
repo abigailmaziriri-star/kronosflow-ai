@@ -4,9 +4,16 @@ import threading
 from flask import Flask, jsonify
 from flask_socketio import SocketIO
 
-# 1. INITIALIZATION & SECURITY SETUP
+# 1. INITIALIZATION & ADVANCED PROXY SETUP
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Added ping timeout adjustments to keep the cloud connection alive persistently
+socketio = SocketIO(
+    app, 
+    cors_allowed_origins="*", 
+    async_mode='gevent',
+    ping_timeout=60, 
+    ping_interval=25
+)
 
 # Fallback Deriv Token Configuration for Local Testing
 DERIV_API_TOKEN = os.environ.get("DERIV_TOKEN", "pat_2835a32815fff743180964079b2d7d66c61fbdb11dfabef674fadeb004f3f523")
@@ -69,8 +76,11 @@ def home():
         </div>
 
         <script>
+            // Enhanced connection manager that handles polling fallbacks automatically on mobile browsers
             var socket = io(window.location.origin, {
-                transports: ['websocket', 'polling']
+                transports: ['polling', 'websocket'],
+                upgrade: true,
+                rememberUpgrade: true
             });
 
             socket.on('connect', function() {
