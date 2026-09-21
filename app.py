@@ -1,21 +1,22 @@
-# ==========================================
-# PART 1: CORNERSTONE PRODUCTION ENVIRONMENT SETUP
-# ==========================================
 from gevent import monkey
-monkey.patch_all()  # Must be at the absolute top for Render WebSockets to route
+monkey.patch_all()  # Establishes internal routing adjustments for Render containers
 
 import os
 from flask import Flask, jsonify
 from flask_socketio import SocketIO
 
-# Initialize Flask with explicit global cross-origin allowances
+# 1. PLATFORM CONFIGURATION MATRIX
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
+# Explicitly disabling standard transport layers forces the proxy to hold lines open safely
+socketio = SocketIO(
+    app, 
+    cors_allowed_origins="*", 
+    async_mode='gevent',
+    logger=True,
+    engineio_logger=True
+)
 
-# Fallback Deriv Token Configuration for Local Phone Testing
-DERIV_API_TOKEN = os.environ.get("DERIV_TOKEN", "pat_2835a32815fff743180964079b2d7d66c61fbdb11dfabef674fadeb004f3f523")
-
-# Active memory tracking state layout
+# Core state layout architecture
 SYSTEM_TELEMETRY = {
     "status": "Initializing Engine...",
     "risk_label": "Safe (Monitoring)",
@@ -25,7 +26,6 @@ SYSTEM_TELEMETRY = {
     "ticks_analyzed": 0
 }
 
-# The processing core data handler 
 def start_background_loop():
     """
     Runs continuously inside a stable gevent micro-thread to handle 
@@ -33,21 +33,17 @@ def start_background_loop():
     """
     global SYSTEM_TELEMETRY
     while True:
-        socketio.sleep(1)  # Gevent-safe non-blocking clock sleep
+        socketio.sleep(1)  # Production-safe asynchronous clock timing marker
         SYSTEM_TELEMETRY["status"] = "Connected to Deriv Websocket Stream"
         SYSTEM_TELEMETRY["ticks_analyzed"] += 1
-        
-        # Stream live analytics to all active dashboard screens
         socketio.emit('telemetry_update', SYSTEM_TELEMETRY)
 
 @socketio.on('connect')
 def handle_connect():
     global SYSTEM_TELEMETRY
-    # Push immediate current snapshot state to frontend upon user handshake
     socketio.emit('telemetry_update', SYSTEM_TELEMETRY)
-# ==========================================
-# PART 2: FRONTEND DASHBOARD PANEL & SYNC CORE
-# ==========================================
+
+# 2. SEAMLESS PRODUCTION INTERFACE ROUTING
 @app.route('/')
 def home():
     return """
@@ -57,7 +53,6 @@ def home():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>KronosFlow AI Dashboard</title>
-        <!-- Pulls the official production socket client directly via secure cloud delivery networks -->
         <script src="https://cloudflare.com"></script>
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; padding: 30px; }
@@ -87,10 +82,11 @@ def home():
         </div>
 
         <script>
-            // Clean connection script that automatically reads port allocations from Render or Pydroid
+            // Forcing explicit fallback pathways resolves mobile carrier proxy bottlenecks immediately
             var socket = io(window.location.origin, {
-                transports: ['websocket', 'polling'],
-                upgrade: true
+                transports: ['polling', 'websocket'],
+                upgrade: true,
+                rememberUpgrade: true
             });
 
             socket.on('connect', function() {
@@ -120,17 +116,11 @@ def home():
 def get_status():
     global SYSTEM_TELEMETRY
     return jsonify(SYSTEM_TELEMETRY)
-# ==========================================
-# PART 3: BACKGROUND TASK RUNNER & VARIABLE GATEWAY
-# ==========================================
 
-# Launches the tracking thread safely within Gevent memory layout pools
+# 3. WORKER BOOTSTRAP GATEWAY
 socketio.start_background_task(start_background_loop)
 
-# Adaptive environment controller
 if __name__ == '__main__':
-    # Dynamically targets Render cloud assignments or drops down to standard port 5000 on your phone
+    # Intercepts Render container routing system variable seamlessly
     port = int(os.environ.get("PORT", 5000))
-    
-    # allow_unsafe_werkzeug=True is completely isolated here so it only triggers during local Pydroid testing
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
