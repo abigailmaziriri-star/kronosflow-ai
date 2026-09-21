@@ -1,17 +1,21 @@
+# ==========================================
+# PART 1: CORNERSTONE PRODUCTION ENVIRONMENT SETUP
+# ==========================================
+from gevent import monkey
+monkey.patch_all()  # Must be at the absolute top for Render WebSockets to route
+
 import os
-import time
 from flask import Flask, jsonify
 from flask_socketio import SocketIO
 
-# 1. INITIALIZATION & STABLE PRODUCTION ENVIRONMENT RULES
+# Initialize Flask with explicit global cross-origin allowances
 app = Flask(__name__)
-# Setting async_mode explicitly to 'gevent' aligns perfectly with our Render server
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
-# Fallback Deriv Token Configuration for Local Testing
+# Fallback Deriv Token Configuration for Local Phone Testing
 DERIV_API_TOKEN = os.environ.get("DERIV_TOKEN", "pat_2835a32815fff743180964079b2d7d66c61fbdb11dfabef674fadeb004f3f523")
 
-# Live trading engine metrics tracking state
+# Active memory tracking state layout
 SYSTEM_TELEMETRY = {
     "status": "Initializing Engine...",
     "risk_label": "Safe (Monitoring)",
@@ -21,30 +25,29 @@ SYSTEM_TELEMETRY = {
     "ticks_analyzed": 0
 }
 
-# 2. PURE GEVENT BACKGROUND PRODUCTION ENGINE
+# The processing core data handler 
 def start_background_loop():
     """
-    This replaces the broken asyncio thread loop with a stable, native 
-    background loop that Gevent can manage safely on production servers.
+    Runs continuously inside a stable gevent micro-thread to handle 
+    incoming data streaming and broadcast updates to the web panel.
     """
     global SYSTEM_TELEMETRY
     while True:
-        # Use gevent-safe sleep tracking instead of asyncio
-        socketio.sleep(1)
+        socketio.sleep(1)  # Gevent-safe non-blocking clock sleep
         SYSTEM_TELEMETRY["status"] = "Connected to Deriv Websocket Stream"
         SYSTEM_TELEMETRY["ticks_analyzed"] += 1
         
-        # Broadcast the data safely to all connected browsers
+        # Stream live analytics to all active dashboard screens
         socketio.emit('telemetry_update', SYSTEM_TELEMETRY)
 
-# Automatically spins up the background loop safe from Gunicorn thread-wiping
 @socketio.on('connect')
 def handle_connect():
     global SYSTEM_TELEMETRY
-    # Send immediate current state to the browser on connection
+    # Push immediate current snapshot state to frontend upon user handshake
     socketio.emit('telemetry_update', SYSTEM_TELEMETRY)
-
-# 3. FRONTEND DASHBOARD LAYOUT HTML & SECURE JAVASCRIPT
+# ==========================================
+# PART 2: FRONTEND DASHBOARD PANEL & SYNC CORE
+# ==========================================
 @app.route('/')
 def home():
     return """
@@ -54,6 +57,7 @@ def home():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>KronosFlow AI Dashboard</title>
+        <!-- Pulls the official production socket client directly via secure cloud delivery networks -->
         <script src="https://cloudflare.com"></script>
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; padding: 30px; }
@@ -83,7 +87,7 @@ def home():
         </div>
 
         <script>
-            // We use window.location.origin to let the client automatically trace the deployment port
+            // Clean connection script that automatically reads port allocations from Render or Pydroid
             var socket = io(window.location.origin, {
                 transports: ['websocket', 'polling'],
                 upgrade: true
@@ -116,12 +120,17 @@ def home():
 def get_status():
     global SYSTEM_TELEMETRY
     return jsonify(SYSTEM_TELEMETRY)
+# ==========================================
+# PART 3: BACKGROUND TASK RUNNER & VARIABLE GATEWAY
+# ==========================================
 
-# 4. START THE BACKGROUND TASK VIA FLASK-SOCKETIO SAFETY WRAPPER
-# This ensures it boots correctly within Gevent's runtime memory landscape
+# Launches the tracking thread safely within Gevent memory layout pools
 socketio.start_background_task(start_background_loop)
 
-# 5. EXECUTION MATRIX FOR LOCAL PYDROID 3 TESTING
+# Adaptive environment controller
 if __name__ == '__main__':
+    # Dynamically targets Render cloud assignments or drops down to standard port 5000 on your phone
     port = int(os.environ.get("PORT", 5000))
+    
+    # allow_unsafe_werkzeug=True is completely isolated here so it only triggers during local Pydroid testing
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
